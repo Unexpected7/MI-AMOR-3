@@ -42,7 +42,20 @@
         window.query = query;
         window.orderBy = orderBy;
     </script>
-</body>
+</head>
+<body>
+    <div class="password-overlay" id="passwordOverlay">
+        <div class="password-card">
+            <h2>Unlock saved letters</h2>
+            <p>Enter the shared password to view the archive.</p>
+            <form id="passwordForm">
+                <label for="archivePassword">Password</label>
+                <input type="password" id="archivePassword" placeholder="Enter password" required>
+                <button type="submit">Open letters</button>
+            </form>
+            <button id="cancelUnlock" class="secondary-button" type="button">Go back</button>
+        </div>
+    </div>
     <div class="container">
         <header>
             <h1>Saved Letters</h1>

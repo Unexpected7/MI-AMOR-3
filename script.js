@@ -1,4 +1,6 @@
 const STORAGE_KEY = 'miAmorLetters';
+const ARCHIVE_PASSWORD = 'Dodo726';
+let archiveUnlocked = false;
 
 function safeText(value) {
     return value
@@ -158,31 +160,84 @@ async function handleSubmit(event) {
     }
 }
 
+function startLetterListener() {
+    if (!window.firebaseDB) {
+        console.error("Firebase not initialized");
+        renderLetters([]);
+        return;
+    }
+
+    const db = window.firebaseDB;
+    const q = query(collection(db, "letters"), orderBy("createdAt", "desc"));
+
+    onSnapshot(q, (querySnapshot) => {
+        const letters = [];
+        querySnapshot.forEach((doc) => {
+            letters.push({ id: doc.id, ...doc.data() });
+        });
+        renderLetters(letters);
+    }, (error) => {
+        console.error("Error listening to letters:", error);
+        renderLetters([]);
+    });
+}
+
+function showUnlockOverlay() {
+    const overlay = document.getElementById('passwordOverlay');
+    if (overlay) {
+        overlay.style.display = 'grid';
+    }
+}
+
+function hideUnlockOverlay() {
+    const overlay = document.getElementById('passwordOverlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
+}
+
+async function unlockArchive(event) {
+    event.preventDefault();
+    const passwordInput = document.getElementById('archivePassword');
+    const value = passwordInput ? passwordInput.value.trim() : '';
+
+    if (value === ARCHIVE_PASSWORD) {
+        archiveUnlocked = true;
+        hideUnlockOverlay();
+        if (passwordInput) {
+            passwordInput.value = '';
+        }
+        startLetterListener();
+        return;
+    }
+
+    alert('Incorrect password. Please try again.');
+    if (passwordInput) {
+        passwordInput.value = '';
+        passwordInput.focus();
+    }
+}
+
 function init() {
     const form = document.getElementById('letterForm');
     if (form) {
         form.addEventListener('submit', handleSubmit);
     }
 
-    // Set up real-time listener for letters
-    if (window.firebaseDB) {
-        const db = window.firebaseDB;
-        const q = query(collection(db, "letters"), orderBy("createdAt", "desc"));
-        
-        onSnapshot(q, (querySnapshot) => {
-            const letters = [];
-            querySnapshot.forEach((doc) => {
-                letters.push({ id: doc.id, ...doc.data() });
+    const passwordForm = document.getElementById('passwordForm');
+    if (passwordForm) {
+        showUnlockOverlay();
+        passwordForm.addEventListener('submit', unlockArchive);
+        const cancelButton = document.getElementById('cancelUnlock');
+        if (cancelButton) {
+            cancelButton.addEventListener('click', () => {
+                window.location.href = 'index.html';
             });
-            renderLetters(letters);
-        }, (error) => {
-            console.error("Error listening to letters:", error);
-            renderLetters([]);
-        });
-    } else {
-        console.error("Firebase not initialized");
-        renderLetters([]);
+        }
+        return;
     }
+
+    startLetterListener();
 }
 
 window.addEventListener('DOMContentLoaded', init);
