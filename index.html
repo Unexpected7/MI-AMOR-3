@@ -2,12 +2,37 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="theme-color" content="#ff7a9f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Love Letters">
     <title>Letters for Us</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="heart.png" type="image/x-icon">
-</head>
-<body>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBCtXcHiFPNYBdxSmkZ_jOhMppAHg__zn0",
+            authDomain: "amor-3.firebaseapp.com",
+            projectId: "amor-3",
+            storageBucket: "amor-3.firebasestorage.app",
+            messagingSenderId: "43156301284",
+            appId: "1:43156301284:web:2ddc5ab26086de8e1353f1"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.firebaseDB = db;
+    </script>
+</body>
     <div class="container">
         <section class="top-card">
             <div class="top-copy">
@@ -27,8 +52,8 @@
                 <p>Celebrate our journey together by writing a message that captures our journey, hopes, and tender moments. Every letter is a keepsake we can return to again and again.</p>
                 <ul class="features">
                     <li>Beautiful, cozy writing space</li>
-                    <li>Saved in the browser for easy access</li>
-                    <li>Perfect for little sweet notes or long letters</li>
+                    <li>Write whatever you love</li>
+                    <li>Cherish every moment</li>
                 </ul>
                 <a class="page-link button-link" href="archive.html">View saved letters</a>
             </aside>
@@ -38,6 +63,10 @@
                     <div class="input-group">
                         <label for="authorName">Your name</label>
                         <input type="text" id="authorName" placeholder="Enter your name" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="recipientName">To</label>
+                        <input type="text" id="recipientName" placeholder="Who is this letter for?" required>
                     </div>
                     <div class="input-group">
                         <label for="letterMessage">Your letter</label>

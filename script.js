@@ -20,33 +20,64 @@ function formatTimestamp(timestamp) {
     });
 }
 
-function loadLetters() {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return [];
+// Firebase functions
+async function loadLetters() {
     try {
-        const parsed = JSON.parse(stored);
-        return Array.isArray(parsed) ? parsed : [];
-    } catch {
+        const db = window.firebaseDB;
+        const q = query(collection(db, "letters"), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        const letters = [];
+        querySnapshot.forEach((doc) => {
+            letters.push({ id: doc.id, ...doc.data() });
+        });
+        return letters;
+    } catch (error) {
+        console.error("Error loading letters:", error);
         return [];
     }
 }
 
-function saveLetters(letters) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(letters));
+async function saveLetter(letter) {
+    try {
+        const db = window.firebaseDB;
+        const docRef = await addDoc(collection(db, "letters"), letter);
+        return docRef.id;
+    } catch (error) {
+        console.error("Error saving letter:", error);
+        throw error;
+    }
 }
 
-function deleteLetter(createdAt) {
-    const letters = loadLetters().filter(letter => letter.createdAt !== createdAt);
-    saveLetters(letters);
-    renderLetters();
+async function deleteLetterFromDB(letterId) {
+    try {
+        const db = window.firebaseDB;
+        await deleteDoc(doc(db, "letters", letterId));
+    } catch (error) {
+        console.error("Error deleting letter:", error);
+        throw error;
+    }
 }
 
-function renderLetters() {
-    const letters = loadLetters();
+async function deleteLetter(letterId) {
+    try {
+        await deleteLetterFromDB(letterId);
+        renderLetters();
+    } catch (error) {
+        alert('Error deleting letter: ' + error.message);
+    }
+}
+
+function renderLetters(letters = null) {
     const list = document.querySelector('.letters-list');
     const empty = document.querySelector('.empty-state');
 
     if (!list) {
+        return;
+    }
+
+    if (letters === null) {
+        // If no letters provided, show loading state
+        list.innerHTML = '<div style="text-align: center; padding: 3rem; color: #7a416f;"><div style="display: inline-block; width: 20px; height: 20px; border: 2px solid #ff7a9f; border-radius: 50%; border-top-color: transparent; animation: spin 1s ease-in-out infinite; margin-bottom: 1rem;"></div><br>Loading letters...</div>';
         return;
     }
 
@@ -62,12 +93,12 @@ function renderLetters() {
         empty.style.display = 'none';
     }
 
-    letters.slice().reverse().forEach(letter => {
+    letters.forEach(letter => {
         const card = document.createElement('article');
         card.className = 'letter-card';
 
         card.innerHTML = `
-            <h2>${safeText(letter.name)}’s letter</h2>
+            <h2>${safeText(letter.name)} → ${safeText(letter.recipient)}</h2>
             <p>${safeText(letter.message).replace(/\n/g, '<br>')}</p>
             <div class="letter-meta">Sent on ${formatTimestamp(letter.createdAt)}</div>
         `;
@@ -78,7 +109,7 @@ function renderLetters() {
         deleteButton.textContent = 'Delete letter';
         deleteButton.addEventListener('click', () => {
             if (confirm('Delete this letter?')) {
-                deleteLetter(letter.createdAt);
+                deleteLetter(letter.id);
             }
         });
 
@@ -89,29 +120,42 @@ function renderLetters() {
 
 function clearForm() {
     document.getElementById('authorName').value = '';
+    document.getElementById('recipientName').value = '';
     document.getElementById('letterMessage').value = '';
     document.getElementById('authorName').focus();
 }
 
-function handleSubmit(event) {
+async function handleSubmit(event) {
     event.preventDefault();
+    
+    // Hide mobile keyboard by blurring active element
+    if (document.activeElement) {
+        document.activeElement.blur();
+    }
 
     const name = document.getElementById('authorName').value.trim();
+    const recipient = document.getElementById('recipientName').value.trim();
     const message = document.getElementById('letterMessage').value.trim();
-    if (!name || !message) {
-        alert('Please enter both your name and your letter.');
+    
+    if (!name || !recipient || !message) {
+        alert('Please enter your name, recipient, and your letter.');
         return;
     }
 
-    const letters = loadLetters();
-    letters.push({
-        name,
-        message,
-        createdAt: Date.now()
-    });
-    saveLetters(letters);
-    renderLetters();
-    clearForm();
+    try {
+        const letter = {
+            name,
+            recipient,
+            message,
+            createdAt: Date.now()
+        };
+        
+        await saveLetter(letter);
+        clearForm();
+        // Letters will be updated automatically via real-time listener
+    } catch (error) {
+        alert('Error saving letter: ' + error.message);
+    }
 }
 
 function init() {
@@ -119,7 +163,26 @@ function init() {
     if (form) {
         form.addEventListener('submit', handleSubmit);
     }
-    renderLetters();
+
+    // Set up real-time listener for letters
+    if (window.firebaseDB) {
+        const db = window.firebaseDB;
+        const q = query(collection(db, "letters"), orderBy("createdAt", "desc"));
+        
+        onSnapshot(q, (querySnapshot) => {
+            const letters = [];
+            querySnapshot.forEach((doc) => {
+                letters.push({ id: doc.id, ...doc.data() });
+            });
+            renderLetters(letters);
+        }, (error) => {
+            console.error("Error listening to letters:", error);
+            renderLetters([]);
+        });
+    } else {
+        console.error("Firebase not initialized");
+        renderLetters([]);
+    }
 }
 
 window.addEventListener('DOMContentLoaded', init);
